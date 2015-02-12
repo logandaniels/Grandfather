@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Grandfather</string>
+    <string name="title_activity_main">Grandfather</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="pref_title_tts_volume">Volume</string>
+    <string name="pref_summary_tts_volume">Adjust current speech volume</string>
+    <string name="pref_default_tts_volume">2</string>
+</resources>

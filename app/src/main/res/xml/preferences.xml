@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <ListPreference
+        android:title="@string/pref_title_tts_volume"
+        android:entries="@array/pref_entries_tts_volume"
+        android:entryValues="@array/pref_entry_values_tts_volume"
+        android:key="pref_key_tts_volume"
+        android:defaultValue="@string/pref_default_tts_volume"
+        android:summary="%s" />
+
+    <EditTextPreference
+        android:title="Default duration"
+        android:summary="%s minutes."
+        android:key="pref_key_tts_duration"
+        android:defaultValue="15"
+        android:inputType="number" />
+
+</PreferenceScreen>
