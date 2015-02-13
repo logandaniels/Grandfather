@@ -1,8 +1,9 @@
 package com.inglesoft.grandfather;
 
-import android.app.Notification;
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -11,24 +12,28 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PowerManager;
 import android.os.Process;
+import android.os.SystemClock;
 import android.speech.tts.TextToSpeech;
-import android.support.v4.app.NotificationCompat;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.Locale;
 
 public class TtsService extends Service implements TextToSpeech.OnInitListener {
     public static final String TAG = "TtsService";
 
+    public static final String ACTION_SPEAK = "com.inglesoft.grandfather.TtsService.ACTION_SPEAK";
+
     public static final String EXTRA_DURATION = "com.inglesoft.grandfather.EXTRA_DURATION";
-    public static final String EXTRA_EVERY_MINUTES = "com.inglesoft.grandfather.EXTRA_EVERY_MINUTES";
+    public static final String EXTRA_INTERVAL = "com.inglesoft.grandfather.EXTRA_INTERVAL";
     public static final String EXTRA_VOLUME = "com.inglesoft.grandfather.EXTRA_VOLUME";
+    public static final String EXTRA_BUNDLE = "com.inglesoft.grandfather.EXTRA_BUNDLE";
 
     private static final int START_SERVICE = 100;
     private static final int NOTIFICATION_ID = 200;
@@ -38,6 +43,14 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
     private Looper mLooper;
     private ServiceHandler mHandler;
 
+    private PowerManager.WakeLock mLock;
+
+    private float mVolume;
+    private int mInterval;
+    private int mDuration;
+
+    private TextToSpeech mTTS;
+    private String mSpeakText;
 
     private final class ServiceHandler extends Handler {
         public ServiceHandler(Looper looper) {
@@ -46,33 +59,19 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
 
         @Override
         public void handleMessage(Message msg) {
-            Log.d(TAG, "Handling message");
             switch (msg.arg2) {
                 case START_SERVICE:
                     Log.d(TAG, "Starting TtsService");
-                    mTimer = new Timer();
-                    startTalking(mEvery_minutes, mDuration);
+                    speakTime();
+                    scheduleNext();
                     break;
                 case STOP_SERVICE:
-                    Log.d(TAG, "Stopping TtsService");
                     stopSelf();
                     break;
                 case INCREASE_TIME:
-                    if (mTimer != null) {
-                        // Extend timer somehow? Perhaps should switch to AlarmManager
-                    }
             }
         }
     }
-
-    private float mVolume;
-    private int mEvery_minutes;
-    private int mDuration;
-
-    private TextToSpeech mTTS;
-    private Timer mTimer;
-    private String mSpeakText;
-
 
     public TtsService() {
     }
@@ -88,15 +87,22 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (mLock == null) {
+            Log.d(TAG, "Obtaining wakelock");
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            mLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
+            mLock.acquire();
+        }
         Message msg = mHandler.obtainMessage();
         msg.arg1 = startId;
         String action = intent.getAction();
         switch (action) {
             case Intent.ACTION_RUN:
                 msg.arg2 = START_SERVICE;
-                mDuration = intent.getIntExtra(EXTRA_DURATION, 15);
-                mEvery_minutes = intent.getIntExtra(EXTRA_EVERY_MINUTES, 3);
-                mVolume = intent.getFloatExtra(EXTRA_VOLUME, 0.75f);
+                Bundle bundle = intent.getBundleExtra(EXTRA_BUNDLE);
+                mDuration = bundle.getInt(EXTRA_DURATION, 10);
+                mInterval = bundle.getInt(EXTRA_INTERVAL, 3);
+                mVolume = bundle.getFloat(EXTRA_VOLUME, 0.75f);
                 break;
             case Intent.ACTION_SHUTDOWN:
                 msg.arg2 = STOP_SERVICE;
@@ -105,8 +111,9 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
                 msg.arg2 = INCREASE_TIME;
                 break;
         }
-        Log.d(TAG, "Sending message");
-        mHandler.sendMessage(msg);
+        if (mDuration > 0) {
+            mHandler.sendMessage(msg);
+        }
 
         return Service.START_NOT_STICKY;
     }
@@ -116,10 +123,32 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
         mTTS = new TextToSpeech(this, this);
     }
 
+    private void speakTime() {
+        DateFormat df = new SimpleDateFormat("h mm", Locale.getDefault());
+        String time = df.format(Calendar.getInstance().getTime());
+        speak("It is now " + time);
+    }
+
 
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
             Log.d(TAG, "TTS initialized.");
+            mTTS.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override
+                public void onStart(String utteranceId) {
+
+                }
+
+                @Override
+                public void onDone(String utteranceId) {
+                    stopSelf();
+                }
+
+                @Override
+                public void onError(String utteranceId) {
+
+                }
+            });
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 Bundle bundle = new Bundle();
@@ -137,59 +166,36 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
         }
     }
 
+    public void scheduleNext() {
+        // Manufacture a pendingIntent to start the speech service
 
-    private void startTalking(int everyMinutes, final int duration) {
-        // Create a persistent notification so that the service runs in the foreground
-        Intent notificationIntent = new Intent(Intent.ACTION_RUN);
-        notificationIntent.setClass(this, MainActivity.class)
-                .setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent launchActivityIntent = PendingIntent
-                .getActivity(this, PendingIntent.FLAG_UPDATE_CURRENT, notificationIntent, 0);
-        PendingIntent extendIntent = PendingIntent
-                .getActivity(this, PendingIntent.FLAG_UPDATE_CURRENT,
-                        notificationIntent.setAction(Intent.ACTION_EDIT), 0);
-        NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(this)
-                        .setSmallIcon(R.drawable.abc_ic_voice_search_api_mtrl_alpha)
-                        .setContentTitle("Grandfather is speaking.")
-                        .setContentText("" + duration + " minutes remaining")
-                        .setContentIntent(launchActivityIntent)
-                        .addAction(android.R.drawable.ic_menu_add, "Add 5 minutes", extendIntent);
-        Notification notification = builder.build();
-        startForeground(NOTIFICATION_ID, notification);
+        Intent speakIntent = new Intent(ACTION_SPEAK);
+        speakIntent.setClass(this, SpeakTimeReceiver.class);
+        speakIntent.putExtra(EXTRA_INTERVAL, mInterval)
+                .putExtra(EXTRA_DURATION, mDuration - mInterval)
+                .putExtra(EXTRA_VOLUME, mVolume);
 
-        speak("I will speak every " + everyMinutes + " minutes for " + duration + " minutes.");
+        PendingIntent broadcastIntent = PendingIntent
+                .getBroadcast(this, 0, speakIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
+        // Schedule it to go off; the service will be responsible for rescheduling itself
+        // until the duration has been met
+        Log.d(TAG, "Scheduling recurring alarm: " + (mDuration - mInterval) + " minutes remaining.");
+        AlarmManager am = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 60 * mInterval * 1000, broadcastIntent);
 
-        // Create a timer to handle the speak() scheduling
-        Log.i(TAG, "Starting timer");
-        TimerTask task = new TimerTask() {
+        } else {
+            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 60 * mInterval * 1000, broadcastIntent);
 
-            final int task_duration_in_minutes = duration;
-            final long startTime = Calendar.getInstance().getTimeInMillis();
-
-            public void run() {
-                if (startTime + task_duration_in_minutes * 60 * 1000 < System.currentTimeMillis()) {
-                    this.cancel();
-                } else {
-                    DateFormat df = new SimpleDateFormat("h mm");
-                    String time = df.format(Calendar.getInstance().getTime());
-                    speak("It is now " + time);
-                }
-            }
-        };
-
-        // TODO make delay normal
-//        int delayInMillis = everyMinutes * 60 * 1000 / 1000;
-        int delayInMillis = 5000;
-        mTimer.scheduleAtFixedRate(task, 5000, delayInMillis);
-
+        }
     }
 
     @Override
     public void onDestroy() {
-        if (mTimer != null) mTimer.cancel();
+        Log.d(TAG, "TtsService destroyed");
         if (mTTS != null) mTTS.shutdown();
+        if (mLock != null) mLock.release();
         super.onDestroy();
     }
 

@@ -11,9 +11,10 @@
         android:orientation="vertical">
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="30dp">
+            android:layout_marginBottom="30dp"
+            android:gravity="center_horizontal">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -21,7 +22,7 @@
                 android:text="Speak every" />
 
             <EditText
-                android:id="@+id/every_text_box"
+                android:id="@+id/interval_text_box"
                 android:layout_width="100dp"
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="10dp"
@@ -37,9 +38,10 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="30dp">
+            android:layout_marginBottom="30dp"
+            android:gravity="center_horizontal">
 
-            <TextView
+        <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="for" />
@@ -68,11 +70,11 @@
             android:textSize="30dp" />
 
         <Button
-            android:id="@+id/reset_button"
+            android:id="@+id/clear_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="30dp"
-            android:text="Reset"
+            android:text="Clear"
             android:textSize="30dp" />
 
     </LinearLayout>

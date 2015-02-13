@@ -1,0 +1,57 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Grandfather\nis speaking."
+            android:textSize="50dp"
+            android:gravity="center_horizontal"
+            android:layout_marginBottom="40dp" />
+
+
+        <TextView
+            android:id="@+id/speaking_every_textview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Speaking every:"
+            android:textSize="20dp"
+            android:gravity="center_horizontal" />
+
+
+        <TextView
+            android:id="@+id/time_remaining_textview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Time remaining:"
+            android:textSize="20dp"
+            android:gravity="center_horizontal" />
+
+        <Button
+            android:id="@+id/extend_time_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="Add 5 mins"
+            android:textSize="30dp"
+            android:layout_marginTop="20dp" />
+
+        <Button
+            android:id="@+id/stop_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="STOP"
+            android:textSize="30dp" />
+
+    </LinearLayout>
+
+</RelativeLayout>

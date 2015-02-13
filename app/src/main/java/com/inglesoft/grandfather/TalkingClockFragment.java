@@ -1,13 +1,20 @@
 package com.inglesoft.grandfather;
 
 import android.app.Activity;
-import android.app.Fragment;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.preference.PreferenceManager;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,10 +33,10 @@ import android.widget.EditText;
 public class TalkingClockFragment extends Fragment {
     private static final String TAG = "TalkingClockFragment";
 
-    int mEveryMinutes;
+    int mInterval;
     int mDuration;
 
-    EditText mEveryTextBox;
+    EditText mIntervalTextBox;
     EditText mDurationTextBox;
 
     // TODO: Rename parameter arguments, choose names that match
@@ -82,8 +89,8 @@ public class TalkingClockFragment extends Fragment {
 
         View v = inflater.inflate(R.layout.fragment_talking_clock, container, false);
 
-        mEveryTextBox = (EditText) v.findViewById(R.id.every_text_box);
-        mEveryTextBox.addTextChangedListener(new TextWatcher() {
+        mIntervalTextBox = (EditText) v.findViewById(R.id.interval_text_box);
+        mIntervalTextBox.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
@@ -92,9 +99,9 @@ public class TalkingClockFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 if (!s.toString().equals("")) {
-                    mEveryMinutes = Integer.valueOf(s.toString());
+                    mInterval = Integer.valueOf(s.toString());
                 } else {
-                    mEveryMinutes = 0;
+                    mInterval = 0;
                 }
             }
 
@@ -134,38 +141,71 @@ public class TalkingClockFragment extends Fragment {
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startTTS(mEveryMinutes, mDuration);
+                startTTS();
             }
         });
-        Button resetButton = (Button) v.findViewById(R.id.reset_button);
-        resetButton.setOnClickListener(new View.OnClickListener() {
+        Button clearButton = (Button) v.findViewById(R.id.clear_button);
+        clearButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mEveryTextBox.setText("");
+                mIntervalTextBox.setText("");
                 mDurationTextBox.setText("");
-                mEveryMinutes = 0;
+                mInterval = 0;
                 stopTTS();
             }
         });
         return v;
     }
 
-    private void stopTTS() {
-        Intent intent = new Intent(Intent.ACTION_SHUTDOWN);
-        intent.setClass(getActivity(), TtsService.class);
-        getActivity().startService(intent);
+    public void stopTTS() {
+        // Create a pendingIntent to pass to AlarmManager's cancel();
+        // the intent it contains must be identical to the intents created
+        // by startTTS and by TtsService's scheduleNext()
+
+        Intent startTimerIntent = new Intent(TtsService.ACTION_SPEAK);
+        startTimerIntent.setClass(getActivity(), SpeakTimeReceiver.class);
+        PendingIntent cancelIntent = PendingIntent
+                .getBroadcast(getActivity(), PendingIntent.FLAG_UPDATE_CURRENT, startTimerIntent, 0);
+
+        Log.d(TAG, "Canceling any current speakTime alarms");
+
+        AlarmManager am = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
+        am.cancel(cancelIntent);
     }
 
-    private void startTTS(int everyMinutes, int duration) {
+    private void startTTS() {
+        // Build a pendingIntent to start the speech service
         float volume = Integer.valueOf(PreferenceManager.getDefaultSharedPreferences(getActivity())
                 .getString(SettingsFragment.PREF_KEY_TTS_VOLUME, ".75"));
 
-        Intent intent = new Intent(Intent.ACTION_RUN);
-        intent.setClass(getActivity(), TtsService.class);
-        intent.putExtra(TtsService.EXTRA_EVERY_MINUTES, everyMinutes)
-                .putExtra(TtsService.EXTRA_DURATION, duration)
+        Intent startTimerIntent = new Intent(TtsService.ACTION_SPEAK);
+        startTimerIntent.setClass(getActivity(), SpeakTimeReceiver.class);
+        startTimerIntent.putExtra(TtsService.EXTRA_INTERVAL, mInterval)
+                .putExtra(TtsService.EXTRA_DURATION, mDuration)
                 .putExtra(TtsService.EXTRA_VOLUME, volume);
-        getActivity().startService(intent);
+
+        PendingIntent broadcastIntent = PendingIntent
+                .getBroadcast(getActivity(), 0, startTimerIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        // Schedule it to go off the first time; the service will be responsible for
+        // rescheduling itself until the duration has been met
+        Log.d(TAG, "Scheduling initial alarm every " + mInterval + " minutes for "
+                + mDuration + " minutes.");
+        AlarmManager am = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    SystemClock.elapsedRealtime() + mInterval * 60 * 1000, broadcastIntent);
+
+        } else {
+            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    SystemClock.elapsedRealtime() + mInterval * 60 * 1000, broadcastIntent);
+
+        }
+    }
+
+    public void loadOngoingFragment() {
+
+        FragmentTransaction ft = getChildFragmentManager().beginTransaction();
     }
 
 

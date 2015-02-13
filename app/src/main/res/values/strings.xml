@@ -10,4 +10,5 @@
     <string name="pref_title_tts_volume">Volume</string>
     <string name="pref_summary_tts_volume">Adjust current speech volume</string>
     <string name="pref_default_tts_volume">2</string>
+    <string name="pref_title_tts_duration">Default duration</string>
 </resources>

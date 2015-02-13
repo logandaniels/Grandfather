@@ -9,8 +9,8 @@
         android:summary="%s" />
 
     <EditTextPreference
-        android:title="Default duration"
-        android:summary="%s minutes."
+        android:title="@string/pref_title_tts_duration"
+        android:summary="%s"
         android:key="pref_key_tts_duration"
         android:defaultValue="15"
         android:inputType="number" />

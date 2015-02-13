@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.inglesoft.grandfather">
 
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -21,7 +23,16 @@
         <service
             android:name=".TtsService"
             android:enabled="true"
-            android:exported="true"></service>
+            android:exported="false" />
+
+        <receiver
+            android:name=".SpeakTimeReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.inglesoft.grandfather.TtsService.ACTION_SPEAK" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

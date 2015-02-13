@@ -1,12 +1,11 @@
 package com.inglesoft.grandfather;
 
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.v13.app.FragmentPagerAdapter;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.Toolbar;
@@ -29,7 +28,7 @@ public class MainActivity extends ActionBarActivity implements TalkingClockFragm
         setSupportActionBar(toolbar);
 
         mPager = (ViewPager) findViewById(R.id.tabs_pager);
-        mTabsAdapter = new TabsAdapter(getFragmentManager());
+        mTabsAdapter = new TabsAdapter(getSupportFragmentManager());
         mPager.setAdapter(mTabsAdapter);
 
         SlidingTabLayout tabs = (SlidingTabLayout) findViewById(R.id.tabs_slider);
@@ -55,9 +54,8 @@ public class MainActivity extends ActionBarActivity implements TalkingClockFragm
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
-            return true;
+            mPager.setCurrentItem(2);
         }
 
         return super.onOptionsItemSelected(item);
@@ -68,17 +66,8 @@ public class MainActivity extends ActionBarActivity implements TalkingClockFragm
         return;
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        if (intent.hasExtra("INCREASE_TIME")) {
-            Intent i = new Intent(Intent.ACTION_EDIT).setClass(this, TtsService.class);
-            startService(i);
-        }
-    }
-
     private static class TabsAdapter extends FragmentPagerAdapter {
-        private String[] tabTitles = new String[]{"Talking Clock", "Background Chime", "Options"};
+        public String[] tabTitles = new String[]{"Talking Clock", "Background Chime", "Options"};
 
         public TabsAdapter(FragmentManager fm) {
             super(fm);
@@ -92,7 +81,8 @@ public class MainActivity extends ActionBarActivity implements TalkingClockFragm
                 case 1:
                     return TalkingClockFragment.newInstance();
                 default:
-                    return SettingsFragment.newInstance();
+                    //return SettingsFragment.newInstance();
+                    return TalkingClockFragment.newInstance();
             }
         }
 
