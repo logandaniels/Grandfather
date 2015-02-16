@@ -7,13 +7,11 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.Menu;
 import android.view.MenuItem;
 
 
-public class MainActivity extends ActionBarActivity implements TalkingClockFragment.OnFragmentInteractionListener {
+public class MainActivity extends BaseActivity implements TalkingClockFragment.OnFragmentInteractionListener {
     TabsAdapter mTabsAdapter;
     ViewPager mPager;
 
@@ -37,14 +35,6 @@ public class MainActivity extends ActionBarActivity implements TalkingClockFragm
         tabs.setViewPager(mPager);
 
 
-    }
-
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
     }
 
     @Override
@@ -81,8 +71,7 @@ public class MainActivity extends ActionBarActivity implements TalkingClockFragm
                 case 1:
                     return TalkingClockFragment.newInstance();
                 default:
-                    //return SettingsFragment.newInstance();
-                    return TalkingClockFragment.newInstance();
+                    return SettingsFragment.newInstance();
             }
         }
 

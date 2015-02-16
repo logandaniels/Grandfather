@@ -36,7 +36,6 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
     public static final String EXTRA_BUNDLE = "com.inglesoft.grandfather.EXTRA_BUNDLE";
 
     private static final int START_SERVICE = 100;
-    private static final int NOTIFICATION_ID = 200;
     private static final int INCREASE_TIME = 300;
     private static final int STOP_SERVICE = 400;
 
@@ -74,6 +73,18 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
     }
 
     public TtsService() {
+    }
+
+    public static void stopTTS(Context context) {
+        Intent startTimerIntent = new Intent(TtsService.ACTION_SPEAK);
+        startTimerIntent.setClass(context, SpeakTimeReceiver.class);
+        PendingIntent cancelIntent = PendingIntent
+                .getBroadcast(context, 0, startTimerIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Log.d(TAG, "Canceling any current speakTime alarms");
+
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        am.cancel(cancelIntent);
     }
 
     public void onCreate() {

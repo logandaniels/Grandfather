@@ -11,4 +11,6 @@
     <string name="pref_summary_tts_volume">Adjust current speech volume</string>
     <string name="pref_default_tts_volume">2</string>
     <string name="pref_title_tts_duration">Default duration</string>
+    <string name="title_activity_ongoing">OngoingActivity</string>
+    <string name="title_activity_base">BaseActivity</string>
 </resources>

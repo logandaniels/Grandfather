@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentTransaction;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -141,7 +140,7 @@ public class TalkingClockFragment extends Fragment {
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startTTS();
+                onStartButtonPressed();
             }
         });
         Button clearButton = (Button) v.findViewById(R.id.clear_button);
@@ -151,27 +150,23 @@ public class TalkingClockFragment extends Fragment {
                 mIntervalTextBox.setText("");
                 mDurationTextBox.setText("");
                 mInterval = 0;
-                stopTTS();
+                TtsService.stopTTS(getActivity());
             }
         });
         return v;
     }
 
-    public void stopTTS() {
-        // Create a pendingIntent to pass to AlarmManager's cancel();
-        // the intent it contains must be identical to the intents created
-        // by startTTS and by TtsService's scheduleNext()
+    private void onStartButtonPressed() {
+        startTTS();
+        Intent i = new Intent(getActivity(), OngoingActivity.class);
 
-        Intent startTimerIntent = new Intent(TtsService.ACTION_SPEAK);
-        startTimerIntent.setClass(getActivity(), SpeakTimeReceiver.class);
-        PendingIntent cancelIntent = PendingIntent
-                .getBroadcast(getActivity(), PendingIntent.FLAG_UPDATE_CURRENT, startTimerIntent, 0);
+        long endTimeInMillis = System.currentTimeMillis() + mDuration * 60 * 1000;
 
-        Log.d(TAG, "Canceling any current speakTime alarms");
-
-        AlarmManager am = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
-        am.cancel(cancelIntent);
+        i.putExtra(OngoingFragment.EXTRA_END_TIME, endTimeInMillis);
+        i.putExtra(OngoingFragment.EXTRA_INTERVAL, mInterval);
+        startActivity(i);
     }
+
 
     private void startTTS() {
         // Build a pendingIntent to start the speech service
@@ -201,11 +196,6 @@ public class TalkingClockFragment extends Fragment {
                     SystemClock.elapsedRealtime() + mInterval * 60 * 1000, broadcastIntent);
 
         }
-    }
-
-    public void loadOngoingFragment() {
-
-        FragmentTransaction ft = getChildFragmentManager().beginTransaction();
     }
 
 

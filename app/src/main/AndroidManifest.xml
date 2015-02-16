@@ -33,6 +33,18 @@
                 <action android:name="com.inglesoft.grandfather.TtsService.ACTION_SPEAK" />
             </intent-filter>
         </receiver>
+
+        <activity
+            android:name=".OngoingActivity"
+            android:label="@string/title_activity_ongoing"
+            android:parentActivityName=".MainActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.inglesoft.grandfather.MainActivity" />
+        </activity>
+        <activity
+            android:name=".BaseActivity"
+            android:label="@string/title_activity_base"></activity>
     </application>
 
 </manifest>
