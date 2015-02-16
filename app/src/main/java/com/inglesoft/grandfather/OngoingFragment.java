@@ -4,8 +4,8 @@ package com.inglesoft.grandfather;
 import android.app.Activity;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.SystemClock;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,7 +22,7 @@ public class OngoingFragment extends Fragment {
     Callbacks mCallbacks;
 
     long mEndTimeInMillis = 0;
-    int mInterval = 0;
+    int mIntervalInMillis = 0;
 
     TextView mSpeakingEveryText;
     TextView mTimeRemainingText;
@@ -68,25 +68,9 @@ public class OngoingFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_ongoing, container, false);
 
         mEndTimeInMillis = getArguments().getLong(EXTRA_END_TIME);
-        mInterval = getArguments().getInt(TtsService.EXTRA_INTERVAL);
+        mIntervalInMillis = getArguments().getInt(TtsService.EXTRA_INTERVAL);
 
-
-        mCountDownTimer = new CountDownTimer(mEndTimeInMillis - System.currentTimeMillis(), 1000) {
-
-            @Override
-            public void onTick(long millisUntilFinished) {
-                String remaining = String.format("%d minutes remaining.", (int) millisUntilFinished / (60 * 1000));
-                mSpeakingEveryText.setText(remaining);
-                String next = String.format("%d seconds until next speech.", (((int) millisUntilFinished / 1000) % (mInterval * 60)));
-                mTimeRemainingText.setText(next);
-
-            }
-
-            @Override
-            public void onFinish() {
-                Log.d(TAG, "Finished speaking.");
-            }
-        }.start();
+        initCountdownTimer();
 
         mSpeakingEveryText = (TextView) v.findViewById(R.id.speaking_every_textview);
 
@@ -95,13 +79,25 @@ public class OngoingFragment extends Fragment {
 
 
         mExtendButton = (Button) v.findViewById(R.id.extend_time_button);
+        mExtendButton.setOnClickListener(new Button.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mCountDownTimer != null) {
+                    mCountDownTimer.cancel();
+                }
+
+                mEndTimeInMillis += 5 * 60 * 1000;
+                TtsService.startTTS(getActivity(), mIntervalInMillis, mEndTimeInMillis);
+                initCountdownTimer();
+            }
+        });
 
 
         mStopButton = (Button) v.findViewById(R.id.stop_button);
         mStopButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                stopTTS();
+                TtsService.stopTTS(getActivity());
                 mCallbacks.onTimerFinish();
             }
         });
@@ -110,8 +106,36 @@ public class OngoingFragment extends Fragment {
         return v;
     }
 
-    private void stopTTS() {
-        TtsService.stopTTS(getActivity());
+    private void initCountdownTimer() {
+        mCountDownTimer = new CountDownTimer(mEndTimeInMillis - SystemClock.elapsedRealtime(), 1000) {
+            int mSecondsUntilNextSpeech = 59;
+
+            @Override
+            public void onTick(long millisUntilFinished) {
+                String remaining = String.format("%d minutes remaining.", (int) millisUntilFinished / (60 * 1000));
+                mSpeakingEveryText.setText(remaining);
+                String next = String.format("%d seconds until next speech.", mSecondsUntilNextSpeech);
+                mTimeRemainingText.setText(next);
+                if (mSecondsUntilNextSpeech == 0) {
+                    mSecondsUntilNextSpeech = 59;
+                } else {
+                    mSecondsUntilNextSpeech--;
+                }
+            }
+
+            @Override
+            public void onFinish() {
+            }
+        }.start();
     }
+
+    @Override
+    public void onStop() {
+        if (mCountDownTimer != null) {
+            mCountDownTimer.cancel();
+        }
+        super.onStop();
+    }
+
 
 }

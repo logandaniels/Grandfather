@@ -14,11 +14,12 @@ public class OngoingActivity extends BaseActivity
         setContentView(R.layout.activity_ongoing);
 
         Bundle extras = getIntent().getExtras();
-        long endTime = extras.getLong(OngoingFragment.EXTRA_END_TIME);
-        int interval = extras.getInt(OngoingFragment.EXTRA_INTERVAL);
+        long endTimeInMillis = extras.getLong(OngoingFragment.EXTRA_END_TIME);
+        int intervalInMillis = extras.getInt(OngoingFragment.EXTRA_INTERVAL);
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.add(R.id.ongoing_fragment_container, OngoingFragment.getInstance(endTime, interval)).commit();
+        ft.add(R.id.ongoing_fragment_container,
+                OngoingFragment.getInstance(endTimeInMillis, intervalInMillis)).commit();
     }
 
 

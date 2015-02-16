@@ -15,6 +15,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Process;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
@@ -30,13 +31,12 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
 
     public static final String ACTION_SPEAK = "com.inglesoft.grandfather.TtsService.ACTION_SPEAK";
 
-    public static final String EXTRA_DURATION = "com.inglesoft.grandfather.EXTRA_DURATION";
+    public static final String EXTRA_END_TIME = "com.inglesoft.grandfather.EXTRA_END_TIME";
     public static final String EXTRA_INTERVAL = "com.inglesoft.grandfather.EXTRA_INTERVAL";
     public static final String EXTRA_VOLUME = "com.inglesoft.grandfather.EXTRA_VOLUME";
     public static final String EXTRA_BUNDLE = "com.inglesoft.grandfather.EXTRA_BUNDLE";
 
     private static final int START_SERVICE = 100;
-    private static final int INCREASE_TIME = 300;
     private static final int STOP_SERVICE = 400;
 
     private Looper mLooper;
@@ -45,8 +45,8 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
     private PowerManager.WakeLock mLock;
 
     private float mVolume;
-    private int mInterval;
-    private int mDuration;
+    private int mIntervalInMillis;
+    private long mEndTimeInMillis;
 
     private TextToSpeech mTTS;
     private String mSpeakText;
@@ -67,7 +67,6 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
                 case STOP_SERVICE:
                     stopSelf();
                     break;
-                case INCREASE_TIME:
             }
         }
     }
@@ -86,6 +85,35 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         am.cancel(cancelIntent);
     }
+
+    public static void startTTS(Context context, int intervalInMillis, long endTimeInMillis) {
+        // Manufacture a pendingIntent to start the speech service
+
+        float volume = Integer.valueOf(PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(SettingsFragment.PREF_KEY_TTS_VOLUME, ".75"));
+
+        Intent speakIntent = new Intent(ACTION_SPEAK);
+        speakIntent.setClass(context, SpeakTimeReceiver.class);
+        speakIntent.putExtra(EXTRA_INTERVAL, intervalInMillis)
+                .putExtra(EXTRA_END_TIME, endTimeInMillis)
+                .putExtra(EXTRA_VOLUME, volume);
+
+        PendingIntent broadcastIntent = PendingIntent
+                .getBroadcast(context, 0, speakIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        // Schedule it to go off; the service will be responsible for rescheduling itself
+        // until the duration has been met
+        Log.d(TAG, "Scheduling recurring alarm: " + ((endTimeInMillis - SystemClock.elapsedRealtime()) / 60 / 1000) + " minutes remaining.");
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + intervalInMillis, broadcastIntent);
+
+        } else {
+            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + intervalInMillis, broadcastIntent);
+
+        }
+    }
+
 
     public void onCreate() {
         HandlerThread thread = new HandlerThread("TtsServiceHandler", Process.THREAD_PRIORITY_BACKGROUND);
@@ -111,18 +139,15 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
             case Intent.ACTION_RUN:
                 msg.arg2 = START_SERVICE;
                 Bundle bundle = intent.getBundleExtra(EXTRA_BUNDLE);
-                mDuration = bundle.getInt(EXTRA_DURATION, 10);
-                mInterval = bundle.getInt(EXTRA_INTERVAL, 3);
+                mEndTimeInMillis = bundle.getLong(EXTRA_END_TIME, 10 * 60 * 1000 + SystemClock.elapsedRealtime());
+                mIntervalInMillis = bundle.getInt(EXTRA_INTERVAL, 3);
                 mVolume = bundle.getFloat(EXTRA_VOLUME, 0.75f);
                 break;
             case Intent.ACTION_SHUTDOWN:
                 msg.arg2 = STOP_SERVICE;
                 break;
-            case Intent.ACTION_EDIT:
-                msg.arg2 = INCREASE_TIME;
-                break;
         }
-        if (mDuration > 0) {
+        if (mEndTimeInMillis > SystemClock.elapsedRealtime()) {
             mHandler.sendMessage(msg);
         }
 
@@ -147,7 +172,6 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
             mTTS.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override
                 public void onStart(String utteranceId) {
-
                 }
 
                 @Override
@@ -157,7 +181,6 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
 
                 @Override
                 public void onError(String utteranceId) {
-
                 }
             });
 
@@ -177,29 +200,8 @@ public class TtsService extends Service implements TextToSpeech.OnInitListener {
         }
     }
 
-    public void scheduleNext() {
-        // Manufacture a pendingIntent to start the speech service
-
-        Intent speakIntent = new Intent(ACTION_SPEAK);
-        speakIntent.setClass(this, SpeakTimeReceiver.class);
-        speakIntent.putExtra(EXTRA_INTERVAL, mInterval)
-                .putExtra(EXTRA_DURATION, mDuration - mInterval)
-                .putExtra(EXTRA_VOLUME, mVolume);
-
-        PendingIntent broadcastIntent = PendingIntent
-                .getBroadcast(this, 0, speakIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        // Schedule it to go off; the service will be responsible for rescheduling itself
-        // until the duration has been met
-        Log.d(TAG, "Scheduling recurring alarm: " + (mDuration - mInterval) + " minutes remaining.");
-        AlarmManager am = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 60 * mInterval * 1000, broadcastIntent);
-
-        } else {
-            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 60 * mInterval * 1000, broadcastIntent);
-
-        }
+    private void scheduleNext() {
+        startTTS(this, mIntervalInMillis, mEndTimeInMillis);
     }
 
     @Override
